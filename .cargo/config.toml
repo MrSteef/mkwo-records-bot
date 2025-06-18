@@ -1,0 +1,16 @@
+[env]
+VCPKG_ROOT = "E:/Programming/vcpkg"
+VCPKG_DEFAULT_TRIPLET = "x64-windows"
+LEPTONICA_INCLUDE_PATH = "E:/Programming/vcpkg/installed/x64-windows/include"
+LEPTONICA_LINK_LIBS = "leptonica-1.85.0"
+LEPTONICA_LINK_PATHS = "E:/Programming/vcpkg/installed/x64-windows/lib"
+TESSERACT_LINK_LIBS = "tesseract55"
+TESSERACT_LINK_PATHS = "E:/Programming/vcpkg/installed/x64-windows/lib"
+LIBCLANG_PATH = "C:/Program Files/LLVM/bin"
+VCPKGRS_DYNAMIC = "true"
+TESSDATA_PREFIX = { value = "tessdata", relative = true }
+
+[build]
+rustflags = [
+  "-L", "native=E:/Programming/vcpkg/installed/x64-windows/lib"
+]
