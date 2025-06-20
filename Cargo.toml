@@ -4,9 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow = "1.0.98"
 dotenv = "0.15.0"
+image = "0.25.6"
+imageproc = "0.25.0"
 infer = "0.19.0"
 leptess = "0.14.0"
 mime = "0.3.17"
 serenity = { version = "0.12.4", default-features = false, features = ["client", "gateway", "rustls_backend", "model"] }
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "fs"] }
