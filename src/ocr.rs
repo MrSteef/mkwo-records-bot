@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use std::collections::HashMap;
 use std::io::Cursor;
 
@@ -58,37 +58,23 @@ impl PipelineData {
 pub trait Step: Send + Sync {
     fn name(&self) -> &'static str;
     fn process(&self, data: PipelineData) -> Result<PipelineData>;
-    fn run(&self, data: PipelineData, debug: bool, idx: usize) -> Result<PipelineData> {
+    fn run(&self, data: PipelineData, debug: bool, idx: usize, msg_id: u64) -> Result<PipelineData> {
         let out = self
             .process(data)
             .with_context(|| format!("step {} failed", self.name()))?;
         if debug {
-            // … save debug images …
+            let filename = format!("debug_{}_{:02}_{}.png", msg_id, idx, self.name());
+            match &out {
+                PipelineData::Rgb8(buf) => buf.save(&filename)?,
+                PipelineData::Luma8(buf) => buf.save(&filename)?,
+                _ => (),
+            }
         }
         Ok(out)
     }
 }
 
-// /// Public entry point: run OCR on in-memory bytes
-// pub fn run_pipeline_from_bytes(
-//     bytes: &[u8],
-//     debug: bool,
-// ) -> Result<String> {
-//     // load original RGB image
-//     let original = image::load_from_memory(bytes)?.to_rgb8();
-//     let mut data = PipelineData::Rgb8(original.clone());
-
-//     // build steps
-
-//     // run
-//     for (i, step) in steps.into_iter().enumerate() {
-//         data = step.run(data, debug, i)?;
-//     }
-
-//     data.into_text()
-// }
-
-pub fn run_pipeline_from_bytes(bytes: &[u8], debug: bool) -> Result<String> {
+pub fn run_pipeline_from_bytes(bytes: &[u8], debug: bool, msg_id: u64) -> Result<String> {
     // 1) load into an RGB buffer
     let img = image::load_from_memory(bytes)
         .context("failed to load image from bytes")?
@@ -137,7 +123,7 @@ pub fn run_pipeline_from_bytes(bytes: &[u8], debug: bool) -> Result<String> {
     // 3) run them
     let mut data = PipelineData::Rgb8(original);
     for (i, step) in steps.into_iter().enumerate() {
-        data = step.run(data, debug, i)?;
+        data = step.run(data, debug, i, msg_id)?;
     }
 
     // 4) pull out the String
