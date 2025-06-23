@@ -11,5 +11,8 @@ imageproc = "0.25.0"
 infer = "0.19.0"
 leptess = "0.14.0"
 mime = "0.3.17"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.140"
 serenity = { version = "0.12.4", default-features = false, features = ["client", "gateway", "rustls_backend", "model"] }
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "fs"] }
+google-sheets4 =  "6.0"

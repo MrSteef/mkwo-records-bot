@@ -1,6 +1,8 @@
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{Context, Result, anyhow};
 use std::collections::HashMap;
+use std::{env, fs};
 use std::io::Cursor;
+use std::path::Path;
 
 use image::codecs::png::PngEncoder;
 use image::{DynamicImage, ImageBuffer, ImageEncoder, Luma, Rgb};
@@ -58,16 +60,34 @@ impl PipelineData {
 pub trait Step: Send + Sync {
     fn name(&self) -> &'static str;
     fn process(&self, data: PipelineData) -> Result<PipelineData>;
-    fn run(&self, data: PipelineData, debug: bool, idx: usize, msg_id: u64) -> Result<PipelineData> {
+    fn run(
+        &self,
+        data: PipelineData,
+        debug: bool,
+        idx: usize,
+        msg_id: u64,
+    ) -> Result<PipelineData> {
         let out = self
             .process(data)
             .with_context(|| format!("step {} failed", self.name()))?;
         if debug {
-            let filename = format!("debug_{}_{:02}_{}.png", msg_id, idx, self.name());
-            match &out {
-                PipelineData::Rgb8(buf) => buf.save(&filename)?,
-                PipelineData::Luma8(buf) => buf.save(&filename)?,
-                _ => (),
+            let debug_path = env::var("DEBUG_FOLDER");
+            match debug_path {
+                Ok(folder) => {
+                    let msg_dir = Path::new(&folder).join(msg_id.to_string());
+                    fs::create_dir_all(&msg_dir)?;
+                    let filename = msg_dir.join(format!("{:02}_{}.png", idx, self.name()));
+                    eprintln!("Saving debug image to {}", filename.display());
+                    
+                    match &out {
+                        PipelineData::Rgb8(buf) => buf.save(&filename)?,
+                        PipelineData::Luma8(buf) => buf.save(&filename)?,
+                        _ => (),
+                    }
+                }
+                Err(why) => {
+                    eprintln!("failed to save debug image file: {}", why);
+                }
             }
         }
         Ok(out)
