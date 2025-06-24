@@ -10,7 +10,7 @@ use mkwo_records_bot::discord::Handler;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv().ok();
-    let mut gsheet = GSheet::try_new().await.unwrap();
+    let gsheet = GSheet::try_new().await.unwrap();
 
     let token = env::var("DISCORD_TOKEN").expect("Expected DISCORD_TOKEN in env");
 

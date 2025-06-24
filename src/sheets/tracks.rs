@@ -57,10 +57,14 @@ impl TryFrom<Vec<Value>> for Track {
         if values.len() < 1 {
             return Err(anyhow!("Not enough fields to constuct a Track instance"));
         }
-        let name = values
-            .get(0)
-            .ok_or(anyhow!("Failed to get first value"))?
-            .to_string();
+        let name = match values.get(0).ok_or(anyhow!("Failed to get first value"))? {
+            Value::Null => "",
+            Value::String(name) => name,
+            _ => {
+                return Err(anyhow!("Failed to represent Current Track as a String"));
+            }
+        }
+        .to_string();
 
         Ok(Track { name })
     }
