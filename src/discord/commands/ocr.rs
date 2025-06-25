@@ -25,7 +25,7 @@ pub async fn handle_message(ctx: &Context, msg: &Message, handler: &Handler) {
         .await
         .unwrap();
 
-    let time = match ocr::run_pipeline_from_bytes(&bytes, true, msg.id.get()) {
+    let time = match ocr::run_pipeline_from_bytes(&bytes, true, msg.id.get()).await {
         Ok(time) => time,
         Err(_) => {
             let edit = EditMessage::new().content("Sorry, I couldn’t process that image.");
