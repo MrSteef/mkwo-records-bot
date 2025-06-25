@@ -44,7 +44,7 @@ impl EventHandler for Handler {
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
-        ocr::handle_message(&ctx, &msg).await;
+        ocr::handle_message(&ctx, &msg, &self).await;
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {

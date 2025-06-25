@@ -22,8 +22,6 @@ pub async fn handle(
     cmd: &CommandInteraction,
     handler: &Handler,
 ) {
-    let response_msg = CreateInteractionResponseMessage::new()
-        .content("Track selection received!");
 
     let user_id = u64::from(cmd.user.id);
     let track_name = cmd
@@ -34,6 +32,9 @@ pub async fn handle(
         .and_then(|opt| opt.value.as_str())
         .unwrap_or_default()
         .to_string();
+    
+    let response_msg = CreateInteractionResponseMessage::new()
+        .content(format!("Now playing {}!", track_name));
 
     if let Err(e) = handler
         .gsheet

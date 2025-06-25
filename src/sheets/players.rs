@@ -195,7 +195,7 @@ impl TryFrom<Vec<Value>> for Player {
 
 impl Into<Vec<Value>> for Player {
     fn into(self) -> Vec<Value> {
-        let user_id = Value::Number(self.user_id.into());
+        let user_id = Value::String(self.user_id.to_string());
         let display_name = Value::String(self.display_name);
         let current_track = match self.current_track {
             Some(track_name) => Value::String(track_name),

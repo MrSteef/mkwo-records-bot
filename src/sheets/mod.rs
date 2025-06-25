@@ -12,6 +12,8 @@ mod tracks;
 use crate::sheets::tracks::Tracks;
 mod players;
 use crate::sheets::players::Players;
+mod records;
+use crate::sheets::records::Records;
 
 pub trait DataRanges {
     fn sheet_name() -> &'static str;
@@ -100,6 +102,10 @@ impl<'a> GSheet {
 
     pub fn players(&'a self) -> Players<'a> {
         Players { gsheet: self }
+    }
+    
+    pub fn records(&'a self) -> Records<'a> {
+        Records { gsheet: self }
     }
 }
 
