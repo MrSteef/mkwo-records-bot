@@ -4,7 +4,7 @@ use serde_json::Value;
 
 const SHEET_NAME: &str = "Tracks";
 const FIRST_COLUMN: &str = "A";
-const LAST_COLUMN: &str = "A";
+const LAST_COLUMN: &str = "B";
 
 pub struct Tracks<'a> {
     pub gsheet: &'a GSheet,
@@ -48,13 +48,14 @@ impl<'a> Tracks<'a> {
 #[derive(Debug)]
 pub struct Track {
     pub name: String,
+    pub icon_url: String,
 }
 
 impl TryFrom<Vec<Value>> for Track {
     type Error = anyhow::Error;
 
     fn try_from(values: Vec<Value>) -> Result<Self> {
-        if values.len() < 1 {
+        if values.len() < 2 {
             return Err(anyhow!("Not enough fields to constuct a Track instance"));
         }
         let name = match values.get(0).ok_or(anyhow!("Failed to get first value"))? {
@@ -66,12 +67,21 @@ impl TryFrom<Vec<Value>> for Track {
         }
         .to_string();
 
-        Ok(Track { name })
+        let icon_url = match values.get(1).ok_or(anyhow!("Failed to get second value"))? {
+            Value::Null => "",
+            Value::String(url) => url,
+            _ => {
+                return Err(anyhow!("Failed to represent Track's icon file URL as a String"));
+            }
+        }
+        .to_string();
+
+        Ok(Track { name, icon_url })
     }
 }
 
 impl Into<Vec<Value>> for Track {
     fn into(self) -> Vec<Value> {
-        vec![Value::String(self.name)]
+        vec![Value::String(self.name), Value::String(self.icon_url)]
     }
 }

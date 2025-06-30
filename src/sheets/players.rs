@@ -124,7 +124,7 @@ impl<'a> Players<'a> {
     }
 
     pub async fn create_player_if_not_exists(&self, user_id: u64) -> Result<()> {
-        if let Some(player) = self.get_by_id(user_id).await? {
+        if let Some(_player) = self.get_by_id(user_id).await? {
             return Ok(());
         }
 
