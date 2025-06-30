@@ -2,16 +2,18 @@ use std::env;
 
 use serenity::{
     all::{
-        AutocompleteChoice, ComponentInteractionDataKind, Context, CreateActionRow,
-        CreateAutocompleteResponse, CreateButton, CreateInteractionResponse,
-        CreateInteractionResponseMessage, CreateModal, CreateSelectMenu, CreateSelectMenuKind,
-        CreateSelectMenuOption, EditInteractionResponse, EditMessage, EventHandler, GuildId,
-        Interaction, Message, Ready, UserId,
+        AutocompleteChoice, Colour, ComponentInteractionDataKind, Context, CreateActionRow,
+        CreateAutocompleteResponse, CreateButton, CreateEmbed, CreateInteractionResponse,
+        CreateInteractionResponseMessage, CreateSelectMenu, CreateSelectMenuKind, EditMessage,
+        EventHandler, GuildId, Interaction, Message, Ready, UserId,
     },
     async_trait,
 };
 
-use crate::discord::commands::{ocr, play};
+use crate::discord::commands::{
+    ocr::{self, duration_to_string},
+    play,
+};
 use crate::sheets::GSheet;
 
 pub struct Handler {
@@ -83,7 +85,7 @@ impl EventHandler for Handler {
                     _ => {}
                 }
             }
-            Interaction::Component(mut act) => {
+            Interaction::Component(act) => {
                 // println!("{}", act.data.custom_id);
                 match act.data.custom_id.as_str() {
                     "change_driver" => {
@@ -142,7 +144,62 @@ impl EventHandler for Handler {
                         // act.message.edit(&ctx, edit).await.unwrap();
 
                         // act.edit_followup(&ctx, edit).await.unwrap();
-                        act.create_response(&ctx, CreateInteractionResponse::Acknowledge).await.unwrap();
+
+                        // act.message.message_reference.unwrap().message_id.unwrap().get()
+
+                        let record = self
+                            .gsheet
+                            .records()
+                            .get_all()
+                            .await
+                            .unwrap()
+                            .into_iter()
+                            .find(|r| r.bot_message_id == bot_message_id)
+                            .unwrap();
+
+                        let track_name = record.track_name;
+
+                        let icon_url = self
+                            .gsheet
+                            .tracks()
+                            .get_all()
+                            .await
+                            .unwrap_or_default()
+                            .into_iter()
+                            .find(|t| t.name == track_name)
+                            .map(|t| t.icon_url)
+                            .unwrap_or_else(|| "https://mario.wiki.gallery/images/thumb/4/47/MKWorldFreeroamWarioWaluigi.png/1600px-MKWorldFreeroamWarioWaluigi.png".to_string());
+
+                        let mention = format!("<@{}>", driver_user_id);
+
+                        let embed = CreateEmbed::default()
+                            .title("NEW RECORD ADDED")
+                            .color(Colour::new(0x00b0f4))
+                            .field("Map", track_name, true)
+                            .field("Time", duration_to_string(record.race_duration), true)
+                            .field("Player", mention, true)
+                            .image(icon_url);
+
+                        let change_driver_button =
+                            CreateButton::new("change_driver").label("Change driver");
+
+                        let components = vec![CreateActionRow::Buttons(vec![change_driver_button])];
+
+                        let edit = EditMessage::new()
+                            .content("")
+                            .embed(embed)
+                            .components(components);
+
+                        // message.edit(&ctx.http, edit).await.unwrap();
+
+                        act.channel_id
+                            .edit_message(&ctx, bot_message_id, edit)
+                            .await
+                            .unwrap();
+
+                        act.create_response(&ctx, CreateInteractionResponse::Acknowledge)
+                            .await
+                            .unwrap();
                     }
                     _ => {}
                 }
