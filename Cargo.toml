@@ -1,22 +1,15 @@
 [package]
 name = "mkwo-records-bot"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 
 [dependencies]
 anyhow = "1.0.98"
-dotenv = "0.15.0"
-image = "0.25.6"
-imageproc = "0.25.0"
-infer = "0.19.0"
-leptess = "0.14.0"
-mime = "0.3.17"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.140"
-serenity = { version = "0.12.4", default-features = false, features = ["client", "gateway", "rustls_backend", "model", "chrono"] }
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "fs"] }
-google-sheets4 =  "6.0"
 chrono = "0.4.41"
 chrono-tz = "0.10.3"
-reqwest = { version = "0.12.20", features = ["json"] }
-base64 = "0.22.1"
+dotenv = "0.15.0"
+google-sheets4 = "6.0.0"
+regex = "1.11.1"
+serde_json = "1.0.140"
+serenity = "0.12.4"
+tokio = { version = "1.46.0", features = ["macros", "rt-multi-thread"] }

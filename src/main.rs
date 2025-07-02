@@ -1,16 +1,13 @@
-use dotenv::dotenv;
-use mkwo_records_bot::sheets::GSheet;
 use std::env;
 
-use serenity::Client;
-use serenity::prelude::*;
-
-use mkwo_records_bot::discord::Handler;
+use dotenv::dotenv;
+use mkwo_records_bot::{discord::handler::Handler, sheets::gsheet::GSheet};
+use serenity::{all::GatewayIntents, Client};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    dotenv().ok();
-    let gsheet = GSheet::try_new().await.unwrap();
+    dotenv()?;
+    let gsheet = GSheet::try_new().await?;
 
     let token = env::var("DISCORD_TOKEN").expect("Expected DISCORD_TOKEN in env");
 
@@ -30,4 +27,5 @@ async fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+
 }
