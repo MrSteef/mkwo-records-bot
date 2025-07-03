@@ -75,21 +75,35 @@ pub fn get_string(value: &Value) -> Result<String> {
 }
 
 pub fn get_timestamp(value: &Value) -> Result<Timestamp> {
-    let s = value
-        .as_str()
-        .ok_or(anyhow!("Failed to represent value as a String"))?;
-    let naive = NaiveDateTime::parse_from_str(s, "%d-%m-%Y %H:%M:%S")?;
-    let datetime: DateTime<Utc> = TimeZone::from_utc_datetime(&Utc, &naive);
-    Ok(Timestamp::from(datetime))
+    match value {
+        Value::String(s) => {
+            let naive = NaiveDateTime::parse_from_str(s, "%d-%m-%Y %H:%M:%S")?;
+            let datetime: DateTime<Utc> = TimeZone::from_utc_datetime(&Utc, &naive);
+            Ok(Timestamp::from(datetime))
+        }
+        Value::Number(n) => {
+            let serial_days = n
+                .as_f64()
+                .ok_or_else(|| anyhow!("Expected number to be f64-compatible: {}", n))?;
+            let unix_seconds = (serial_days - SHEETS_EPOCH_UNIX_DAYS) * SECS_PER_DAY;
+            let datetime = DateTime::from_timestamp(unix_seconds as i64, 0)
+                .ok_or_else(|| anyhow!("Failed to convert {} to NaiveDateTime", unix_seconds))?;
+            // let datetime_utc: DateTime<Utc> = DateTime::from_utc(datetime, Utc);
+            Ok(Timestamp::from(datetime))
+        }
+        other => Err(anyhow!("Unsupported value type for timestamp: {}", other)),
+    }
 }
 
 pub fn get_duration(value: &Value) -> Result<Duration> {
     match value {
-        Value::Number(number) => Ok(Duration::from_secs(
-            number
-                .as_u64()
-                .ok_or(anyhow!("Failed to represent value as a u64"))?,
-        )),
+        Value::Number(number) => {
+            let time = number
+                .as_f64()
+                .ok_or(anyhow!("Failed to represent value as a f64: {}", number))?;
+            let seconds = time * SECS_PER_DAY;
+            Ok(Duration::from_secs_f64(seconds))
+        },
         Value::String(string) => {
             let parts: Vec<&str> = string.split(':').collect();
             if parts.len() != 2 {

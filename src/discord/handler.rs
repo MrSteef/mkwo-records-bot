@@ -2,12 +2,12 @@ use std::env;
 
 use anyhow::Result;
 use serenity::{
-    all::{Context, EventHandler, GuildId, Interaction, Ready},
+    all::{Context, EventHandler, GuildId, Interaction, Message, Ready},
     async_trait,
 };
 
 use crate::{
-    discord::interactions::{autocompletes::track, commands::play},
+    discord::interactions::{self, autocompletes::track, commands::play, messages},
     sheets::gsheet::GSheet,
 };
 
@@ -46,6 +46,11 @@ impl EventHandler for Handler {
         play::register(&ctx.http, guild).await.unwrap();
     }
 
+    async fn message(&self, ctx: Context, msg: Message) {
+        messages::image::handle_message(&ctx, &msg, &self).await;
+    }
+
+
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         match interaction {
             Interaction::Command(cmd) => match cmd.data.name.as_str() {
@@ -64,6 +69,8 @@ impl EventHandler for Handler {
                 _ => {}
             },
             Interaction::Component(act) => match act.data.custom_id.as_str() {
+                "record_change_driver" => interactions::components::record::change_driver::handle(&ctx, &act, &self).await,
+                "record_select_driver" => interactions::components::record::select_driver::handle(&ctx, &act, &self).await,
                 _ => {}
             },
             _ => {}

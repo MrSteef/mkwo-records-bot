@@ -1,0 +1,5 @@
+The attached image is the result of a Time Trial.
+The driver's time is the one in the yellow box.
+Please tell me what this time is.
+It is formatted as '0:00.000' (m:ss.ms).
+Your response should match this exact format, and may not include any other text.
