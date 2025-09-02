@@ -7,7 +7,7 @@ use serenity::{
 };
 
 use crate::{
-    discord::interactions::{self, autocompletes::track, commands::play, messages},
+    discord::interactions::{self, autocompletes::track, commands::{play, refresh}, messages},
     sheets::gsheet::GSheet,
 };
 
@@ -44,6 +44,7 @@ impl EventHandler for Handler {
         let guild = GuildId::new(guild_id);
 
         play::register(&ctx.http, guild).await.unwrap();
+        refresh::register(&ctx.http, guild).await.unwrap();
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
@@ -55,6 +56,7 @@ impl EventHandler for Handler {
         match interaction {
             Interaction::Command(cmd) => match cmd.data.name.as_str() {
                 "play" => play::handle(&ctx, &cmd, &self).await,
+                "refresh" => refresh::handle(&ctx, &cmd, &self).await,
                 _ => {}
             },
             Interaction::Autocomplete(ac) => match ac
