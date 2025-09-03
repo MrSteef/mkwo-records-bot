@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use anyhow::{Result, anyhow};
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use chrono_tz::Europe::Amsterdam;
 use serde_json::{Number, Value};
@@ -55,93 +54,198 @@ pub trait DataRanges {
     }
 }
 
-pub fn get_u64(value: &Value) -> Result<u64> {
+#[derive(Debug, thiserror::Error)]
+pub enum DeserializeValueError {
+    #[error("Failed to represent {input_value} as {output_type}")]
+    ExtractValue {
+        input_value: Value,
+        output_type: &'static str,
+    },
+
+    #[error(
+        "Found an unexpected value while trying to produce a {intended_output}: {input_value}, allowed value type(s) is/are: {allowed_inputs}"
+    )]
+    UnexpectedValueType {
+        input_value: Value,
+        allowed_inputs: &'static str,
+        intended_output: &'static str,
+    },
+
+    #[error("Failed to convert {input} into {output_type}")]
+    TypeConversion {
+        input: String,
+        output_type: &'static str,
+    },
+
+    #[error("Failed to format {input} as {output_type}: {message}")]
+    InvalidFormat {
+        input: String,
+        output_type: &'static str,
+        message: String,
+    },
+}
+
+pub fn get_u64(value: &Value) -> Result<u64, DeserializeValueError> {
     match value {
-        Value::Number(number) => number
-            .as_u64()
-            .ok_or(anyhow!("Failed to represent User ID as a u64")),
+        Value::Number(number) => number.as_u64().ok_or(DeserializeValueError::ExtractValue {
+            input_value: value.clone(),
+            output_type: "u64",
+        }),
         Value::String(text) => text
             .parse()
-            .map_err(|_| anyhow!("Failed to represent User ID as a u64")),
-        _ => Err(anyhow!("Failed to represent User ID as a u64")),
+            .map_err(|_| DeserializeValueError::TypeConversion {
+                input: text.to_string(),
+                output_type: "u64",
+            }),
+        val => Err(DeserializeValueError::UnexpectedValueType {
+            input_value: val.clone(),
+            allowed_inputs: "Number, String",
+            intended_output: "u64",
+        }),
     }
 }
 
-pub fn get_string(value: &Value) -> Result<String> {
+pub fn get_string(value: &Value) -> Result<String, DeserializeValueError> {
     match value {
         Value::String(name) => Ok(name.to_owned()),
-        _ => Err(anyhow!("Failed to represent display name as a String")),
+        val => Err(DeserializeValueError::UnexpectedValueType {
+            input_value: val.clone(),
+            allowed_inputs: "String",
+            intended_output: "String",
+        }),
     }
 }
 
-pub fn get_timestamp(value: &Value) -> Result<Timestamp> {
+pub fn get_timestamp(value: &Value) -> Result<Timestamp, DeserializeValueError> {
     match value {
         Value::String(s) => {
-            let naive = NaiveDateTime::parse_from_str(s, "%d-%m-%Y %H:%M:%S")?;
+            let naive = NaiveDateTime::parse_from_str(s, "%d-%m-%Y %H:%M:%S").map_err(|_| {
+                DeserializeValueError::ExtractValue {
+                    input_value: value.clone(),
+                    output_type: "Timestamp",
+                }
+            })?;
             let datetime: DateTime<Utc> = TimeZone::from_utc_datetime(&Utc, &naive);
             Ok(Timestamp::from(datetime))
         }
         Value::Number(n) => {
-            let serial_days = n
-                .as_f64()
-                .ok_or_else(|| anyhow!("Expected number to be f64-compatible: {}", n))?;
+            let serial_days = n.as_f64().ok_or(DeserializeValueError::ExtractValue {
+                input_value: value.clone(),
+                output_type: "f64",
+            })?;
             let unix_seconds = (serial_days - SHEETS_EPOCH_UNIX_DAYS) * SECS_PER_DAY;
-            let datetime = DateTime::from_timestamp(unix_seconds as i64, 0)
-                .ok_or_else(|| anyhow!("Failed to convert {} to NaiveDateTime", unix_seconds))?;
+            let datetime = DateTime::from_timestamp(unix_seconds as i64, 0).ok_or_else(|| {
+                DeserializeValueError::TypeConversion {
+                    input: unix_seconds.to_string(),
+                    output_type: "DateTime",
+                }
+            })?;
             // let datetime_utc: DateTime<Utc> = DateTime::from_utc(datetime, Utc);
             Ok(Timestamp::from(datetime))
         }
-        other => Err(anyhow!("Unsupported value type for timestamp: {}", other)),
+        val => Err(DeserializeValueError::UnexpectedValueType {
+            input_value: val.clone(),
+            allowed_inputs: "String, Number",
+            intended_output: "Timestamp",
+        }),
     }
 }
 
-pub fn get_duration(value: &Value) -> Result<Duration> {
+pub fn get_duration(value: &Value) -> Result<Duration, DeserializeValueError> {
     match value {
         Value::Number(number) => {
-            let time = number
-                .as_f64()
-                .ok_or(anyhow!("Failed to represent value as a f64: {}", number))?;
+            let time = number.as_f64().ok_or(DeserializeValueError::ExtractValue {
+                input_value: value.clone(),
+                output_type: "f64",
+            })?;
             let seconds = time * SECS_PER_DAY;
             Ok(Duration::from_secs_f64(seconds))
-        },
+        }
         Value::String(string) => {
             let parts: Vec<&str> = string.split(':').collect();
             if parts.len() != 2 {
-                panic!("Invalid duration string format: {:?}", string);
+                return Err(DeserializeValueError::InvalidFormat {
+                    input: string.clone(),
+                    output_type: "Duration",
+                    message: "String must contain exactly one colon, between the minutes and seconds place".to_owned(),
+                });
             }
 
-            let minutes: u64 = parts[0].parse().expect("Invalid minutes");
-            let sec_parts: Vec<&str> = parts[1].split('.').collect();
+            let minutes: u64 =
+                parts[0]
+                    .parse()
+                    .map_err(|_| DeserializeValueError::InvalidFormat {
+                        input: parts[0].to_owned(),
+                        output_type: "u64",
+                        message: "Minutes part must represent a valid number".to_owned(),
+                    })?;
 
-            let seconds: u64 = sec_parts[0].parse().expect("Invalid seconds");
+            let sec_parts: Vec<&str> = parts[1].split('.').collect();
+            if sec_parts.len() != 2 {
+                return Err(DeserializeValueError::InvalidFormat {
+                    input: string.clone(),
+                    output_type: "Duration",
+                    message: "String must contain exactly one period, between the seconds and milliseconds place".to_owned(),
+                });
+            }
+
+            let seconds: u64 =
+                sec_parts[0]
+                    .parse()
+                    .map_err(|_| DeserializeValueError::InvalidFormat {
+                        input: parts[0].to_owned(),
+                        output_type: "u64",
+                        message: "Seconds part must represent a valid number".to_owned(),
+                    })?;
+
             let millis: u64 = if sec_parts.len() > 1 {
-                sec_parts[1].parse::<u64>().expect("Invalid milliseconds")
+                sec_parts[1]
+                    .parse::<u64>()
+                    .map_err(|_| DeserializeValueError::InvalidFormat {
+                        input: parts[0].to_owned(),
+                        output_type: "u64",
+                        message: "Milliseconds part must represent a valid number".to_owned(),
+                    })?
             } else {
                 0
             };
 
             Ok(Duration::from_secs(minutes * 60 + seconds) + Duration::from_millis(millis))
         }
-        _ => Err(anyhow!("Failed to represent value as a Duration")),
+        _ => Err(DeserializeValueError::UnexpectedValueType {
+            input_value: value.clone(),
+            allowed_inputs: "Number, String",
+            intended_output: "Duration",
+        }),
     }
 }
 
 const SHEETS_EPOCH_UNIX_DAYS: f64 = 25_569.0;
 const SECS_PER_DAY: f64 = 86_400.0;
 
-pub fn timestamp_to_value(timestamp: Timestamp) -> Value {
+#[derive(Debug, thiserror::Error)]
+pub enum SerializeValueError {
+    #[error("Failed to turn {input} into a Value: {message}")]
+    ParseError { input: String, message: String },
+}
+
+pub fn timestamp_to_value(timestamp: Timestamp) -> Result<Value, SerializeValueError> {
     let dt_am = timestamp.with_timezone(&Amsterdam);
     let naive_local = dt_am.naive_local();
     let local_secs = naive_local.and_utc().timestamp() as f64;
     let serial_days = local_secs / SECS_PER_DAY + SHEETS_EPOCH_UNIX_DAYS;
-    Value::Number(
-        Number::from_f64(serial_days).expect("timestamp_to_value: serial_days must be finite"),
-    )
+    let number = Number::from_f64(serial_days).ok_or(SerializeValueError::ParseError {
+        input: serial_days.to_string(),
+        message: "Number may not be NaN or Infinite".to_owned(),
+    })?;
+    Ok(Value::Number(number))
 }
 
-pub fn duration_to_value(duration: Duration) -> Value {
+pub fn duration_to_value(duration: Duration) -> Result<Value, SerializeValueError> {
     let serial_days = duration.as_secs_f64() / SECS_PER_DAY;
-    Value::Number(
-        Number::from_f64(serial_days).expect("duration_to_value: serial_days must be finite"),
-    )
+    let number = Number::from_f64(serial_days).ok_or(SerializeValueError::ParseError {
+        input: serial_days.to_string(),
+        message: "Number may not be NaN or Infinite".to_owned(),
+    })?;
+    Ok(Value::Number(number))
 }

@@ -1,4 +1,3 @@
-use anyhow::Result;
 use google_sheets4::{
     Sheets,
     api::ValueRange,
@@ -35,8 +34,20 @@ impl fmt::Debug for GSheet {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum GSheetError {
+    #[error(transparent)]
+    Env(#[from] std::env::VarError),
+
+    #[error(transparent)]
+    ServiceAccount(#[from] ServiceAccountError),
+
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+}
+
 impl GSheet {
-    pub async fn try_new() -> Result<Self> {
+    pub async fn try_new() -> Result<Self, GSheetError> {
         let document_id = env::var("GOOGLE_SHEET_ID")?;
         let service_account_path = env::var("SERVICE_ACCOUNT_JSON")?;
         let service_account = read_service_account_json(&service_account_path)?;
@@ -62,7 +73,7 @@ impl GSheet {
         })
     }
 
-    pub async fn write_cell(&self, cell: String, value: Value) -> Result<()> {
+    pub async fn write_cell(&self, cell: String, value: Value) -> Result<(), google_sheets4::Error> {
         let values = vec![vec![value]];
 
         let request: ValueRange = ValueRange {
@@ -101,12 +112,22 @@ impl<'a> GSheet {
     }
 }
 
-fn read_service_account_json(file_path: &str) -> Result<ServiceAccountKey> {
-    let mut file = File::open(file_path).map_err(|e| serde_json::Error::io(e))?;
+#[derive(Debug, thiserror::Error)]
+pub enum ServiceAccountError {
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+
+    #[error(transparent)]
+    Json(#[from] serde_json::Error)
+}
+
+fn read_service_account_json(file_path: &str) -> Result<ServiceAccountKey, ServiceAccountError> {
+    let mut file = File::open(file_path)?;
 
     let mut contents = String::new();
-    file.read_to_string(&mut contents)
-        .map_err(|e| serde_json::Error::io(e))?;
+    file.read_to_string(&mut contents)?;
 
-    serde_json::from_str(&contents).map_err(|e| anyhow::anyhow!(e.to_string()))
+    let acc: ServiceAccountKey = serde_json::from_str(&contents)?;
+
+    Ok(acc)
 }

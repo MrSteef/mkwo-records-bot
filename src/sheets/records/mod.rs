@@ -73,10 +73,10 @@ impl<'a> Records<'a> {
     ) -> Result<Record<'a>> {
         let user_message_id_value = Value::String(user_message_id.to_string());
         let bot_message_id_value = Value::String(bot_message_id.to_string());
-        let report_timestamp_value = timestamp_to_value(report_timestamp);
+        let report_timestamp_value = timestamp_to_value(report_timestamp).unwrap(); // TODO: handle this unwrap properly
         let driver_user_id_value = Value::String(driver_user_id.to_string());
         let track_name_value = Value::String(track_name);
-        let race_duration_value = duration_to_value(race_duration);
+        let race_duration_value = duration_to_value(race_duration).unwrap(); // TODO: handle this unwrap properly
 
         let row = vec![
             user_message_id_value,

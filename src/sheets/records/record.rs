@@ -72,7 +72,7 @@ impl Record<'_> {
 
     pub async fn set_race_duration(&mut self, race_duration: Duration) -> Result<()> {
         let cell = Records::cell_range(self.rownum, Records::RACE_DURATION_COLUMN);
-        let value = duration_to_value(race_duration);
+        let value = duration_to_value(race_duration).unwrap(); // TODO: handle this unwrap properly
         self.gsheet.write_cell(cell, value).await?;
         self.race_duration = race_duration;
         Ok(())
@@ -83,10 +83,10 @@ impl<'a> Into<Vec<Value>> for Record<'a> {
     fn into(self) -> Vec<Value> {
         let user_message_id = Value::String(self.user_message_id.to_string());
         let bot_message_id = Value::String(self.bot_message_id.to_string());
-        let report_timestamp = timestamp_to_value(self.report_timestamp);
+        let report_timestamp = timestamp_to_value(self.report_timestamp).unwrap(); // TODO: handle this unwrap properly
         let driver_user_id = Value::String(self.driver_user_id.to_string());
         let track_name = Value::String(self.track_name);
-        let race_duration = duration_to_value(self.race_duration);
+        let race_duration = duration_to_value(self.race_duration).unwrap(); // TODO: handle this unwrap properly
 
         vec![
             user_message_id,
