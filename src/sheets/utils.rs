@@ -5,6 +5,8 @@ use chrono_tz::Europe::Amsterdam;
 use serde_json::{Number, Value};
 use serenity::all::Timestamp;
 
+use crate::sheets::errors::{DeserializeValueError, SerializeValueError};
+
 pub trait DataRanges {
     const SHEET_NAME: &'static str;
     const FIRST_COLUMN: &'static str;
@@ -52,37 +54,6 @@ pub trait DataRanges {
         let end = captures.get(2)?.as_str().parse::<usize>().ok()?;
         Some((start, end))
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum DeserializeValueError {
-    #[error("Failed to represent {input_value} as {output_type}")]
-    ExtractValue {
-        input_value: Value,
-        output_type: &'static str,
-    },
-
-    #[error(
-        "Found an unexpected value while trying to produce a {intended_output}: {input_value}, allowed value type(s) is/are: {allowed_inputs}"
-    )]
-    UnexpectedValueType {
-        input_value: Value,
-        allowed_inputs: &'static str,
-        intended_output: &'static str,
-    },
-
-    #[error("Failed to convert {input} into {output_type}")]
-    TypeConversion {
-        input: String,
-        output_type: &'static str,
-    },
-
-    #[error("Failed to format {input} as {output_type}: {message}")]
-    InvalidFormat {
-        input: String,
-        output_type: &'static str,
-        message: String,
-    },
 }
 
 pub fn get_u64(value: &Value) -> Result<u64, DeserializeValueError> {
@@ -222,12 +193,6 @@ pub fn get_duration(value: &Value) -> Result<Duration, DeserializeValueError> {
 
 const SHEETS_EPOCH_UNIX_DAYS: f64 = 25_569.0;
 const SECS_PER_DAY: f64 = 86_400.0;
-
-#[derive(Debug, thiserror::Error)]
-pub enum SerializeValueError {
-    #[error("Failed to turn {input} into a Value: {message}")]
-    ParseError { input: String, message: String },
-}
 
 pub fn timestamp_to_value(timestamp: Timestamp) -> Result<Value, SerializeValueError> {
     let dt_am = timestamp.with_timezone(&Amsterdam);

@@ -1,10 +1,7 @@
-use anyhow::{Result, anyhow};
 use serde_json::Value;
 
 use crate::sheets::{
-    gsheet::GSheet,
-    players::Players,
-    utils::{DataRanges, get_string, get_u64},
+    errors::{DataUploadError, DeserializeValueError}, gsheet::GSheet, players::Players, utils::{get_string, get_u64, DataRanges}
 };
 
 #[derive(Debug)]
@@ -17,13 +14,19 @@ pub struct Player<'a> {
 }
 
 impl<'a> Player<'a> {
-    pub fn from_row(rownum: usize, values: Vec<Value>, gsheet: &'a GSheet) -> Result<Self> {
-        let user_id_value = values.get(0).ok_or(anyhow!("Failed to get first value"))?;
+    pub fn from_row(rownum: usize, values: Vec<Value>, gsheet: &'a GSheet) -> Result<Self, DeserializeValueError> {
+        let user_id_value = values.get(0).ok_or(DeserializeValueError::MissingItem {
+            missing_index: 0,
+            expected_item_count: 2,
+        })?;
         let user_id = get_u64(user_id_value)?;
 
         let display_name_value = values
             .get(1)
-            .ok_or(anyhow!("Failed to get display name value"))?;
+            .ok_or(DeserializeValueError::MissingItem {
+            missing_index: 1,
+            expected_item_count: 2,
+        })?;
         let display_name = get_string(display_name_value)?;
 
         let current_track_value = values.get(2).unwrap_or(&Value::Null);
@@ -42,7 +45,7 @@ impl<'a> Player<'a> {
 }
 
 impl Player<'_> {
-    pub async fn set_display_name(&mut self, display_name: String) -> Result<()> {
+    pub async fn set_display_name(&mut self, display_name: String) -> Result<(), DataUploadError> {
         let cell = Players::cell_range(self.rownum, Players::DISPLAY_NAME_COLUMN);
         let value = Value::String(display_name.clone());
         self.gsheet.write_cell(cell, value).await?;
@@ -50,7 +53,7 @@ impl Player<'_> {
         Ok(())
     }
 
-    pub async fn set_current_track(&mut self, track_name: String) -> Result<()> {
+    pub async fn set_current_track(&mut self, track_name: String) -> Result<(), DataUploadError> {
         let cell = Players::cell_range(self.rownum, Players::CURRENT_TRACK_COLUMN);
         let value = Value::String(track_name.clone());
         self.gsheet.write_cell(cell, value).await?;

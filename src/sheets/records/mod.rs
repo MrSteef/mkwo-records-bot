@@ -1,7 +1,6 @@
 use std::time::Duration;
 
-use crate::sheets::{gsheet::GSheet, utils::{duration_to_value, timestamp_to_value}};
-use anyhow::{Result, anyhow};
+use crate::sheets::{errors::{DataFetchError, DataUploadError}, gsheet::GSheet, utils::{duration_to_value, timestamp_to_value}};
 use google_sheets4::api::ValueRange;
 use serenity::{all::Timestamp, json::Value};
 pub mod record;
@@ -32,7 +31,7 @@ impl<'a> Records<'a> {
     pub const TRACK_NAME_COLUMN: &'static str = "E";
     pub const RACE_DURATION_COLUMN: &'static str = "F";
 
-    pub async fn get_all(&self) -> Result<Vec<Record<'a>>> {
+    pub async fn get_all(&self) -> Result<Vec<Record<'a>>, DataFetchError> {
         let sheets = self.gsheet.sheets.lock().await;
         let document_id = &self.gsheet.document_id;
         let table_range = &Records::table_range();
@@ -54,7 +53,7 @@ impl<'a> Records<'a> {
         Ok(records)
     }
 
-    pub async fn get_by_bot_message_id(&self, bot_message_id: u64) -> Result<Option<Record>> {
+    pub async fn get_by_bot_message_id(&self, bot_message_id: u64) -> Result<Option<Record>, DataFetchError> {
         let player_list = self.get_all().await?;
         let player = player_list
             .into_iter()
@@ -70,7 +69,7 @@ impl<'a> Records<'a> {
         driver_user_id: u64,
         track_name: String,
         race_duration: Duration,
-    ) -> Result<Record<'a>> {
+    ) -> Result<Record<'a>, DataUploadError> {
         let user_message_id_value = Value::String(user_message_id.to_string());
         let bot_message_id_value = Value::String(bot_message_id.to_string());
         let report_timestamp_value = timestamp_to_value(report_timestamp).unwrap(); // TODO: handle this unwrap properly
@@ -104,14 +103,14 @@ impl<'a> Records<'a> {
             .await?
             .1
             .updates
-            .ok_or(anyhow!("Failed to obtain Google Sheets return"))?
+            .ok_or(DataUploadError::MissingOrUnexpectedResponse)?
             .updated_range
-            .ok_or(anyhow!("Failed to obtain Google Sheets return"))?;
+            .ok_or(DataUploadError::MissingOrUnexpectedResponse)?;
         let rownum = Records::extract_rows_from_range(&result)
-            .ok_or(anyhow!("Failed to determine row number"))?
+            .ok_or(DataUploadError::MissingOrUnexpectedResponse)?
             .0;
-        let record = Record::from_row(rownum, row, self.gsheet);
+        let record = Record::from_row(rownum, row, self.gsheet)?;
         
-        record
+        Ok(record)
     }
 }

@@ -1,13 +1,15 @@
 use std::time::Duration;
 
-use anyhow::{Result, anyhow};
 use serde_json::Value;
 use serenity::all::Timestamp;
 
 use crate::sheets::{
+    errors::{DataUploadError, DeserializeValueError},
     gsheet::GSheet,
     records::Records,
-    utils::{duration_to_value, get_duration, get_string, get_timestamp, get_u64, timestamp_to_value, DataRanges},
+    utils::{
+        duration_to_value, get_duration, get_string, get_timestamp, get_u64, timestamp_to_value, DataRanges
+    },
 };
 
 #[derive(Debug)]
@@ -23,13 +25,35 @@ pub struct Record<'a> {
 }
 
 impl<'a> Record<'a> {
-    pub fn from_row(rownum: usize, values: Vec<Value>, gsheet: &'a GSheet) -> Result<Self> {
-        let user_message_id_value = values.get(0).ok_or(anyhow!("Failed to get first value"))?;
-        let bot_message_id_value = values.get(1).ok_or(anyhow!("Failed to get second value"))?;
-        let report_timestamp_value = values.get(2).ok_or(anyhow!("Failed to get third value"))?;
-        let driver_user_id_value = values.get(3).ok_or(anyhow!("Failed to get fourth value"))?;
-        let track_name_value = values.get(4).ok_or(anyhow!("Failed to get fifth value"))?;
-        let race_duration_value = values.get(5).ok_or(anyhow!("Failed to get sixth value"))?;
+    pub fn from_row(
+        rownum: usize,
+        values: Vec<Value>,
+        gsheet: &'a GSheet,
+    ) -> Result<Self, DeserializeValueError> {
+        let user_message_id_value = values.get(0).ok_or(DeserializeValueError::MissingItem {
+            missing_index: 0,
+            expected_item_count: 6,
+        })?;
+        let bot_message_id_value = values.get(1).ok_or(DeserializeValueError::MissingItem {
+            missing_index: 1,
+            expected_item_count: 6,
+        })?;
+        let report_timestamp_value = values.get(2).ok_or(DeserializeValueError::MissingItem {
+            missing_index: 2,
+            expected_item_count: 6,
+        })?;
+        let driver_user_id_value = values.get(3).ok_or(DeserializeValueError::MissingItem {
+            missing_index: 3,
+            expected_item_count: 6,
+        })?;
+        let track_name_value = values.get(4).ok_or(DeserializeValueError::MissingItem {
+            missing_index: 4,
+            expected_item_count: 6,
+        })?;
+        let race_duration_value = values.get(5).ok_or(DeserializeValueError::MissingItem {
+            missing_index: 5,
+            expected_item_count: 6,
+        })?;
 
         let user_message_id = get_u64(user_message_id_value)?;
         let bot_message_id = get_u64(bot_message_id_value)?;
@@ -54,7 +78,7 @@ impl<'a> Record<'a> {
 }
 
 impl Record<'_> {
-    pub async fn set_driver_user_id(&mut self, user_id: u64) -> Result<()> {
+    pub async fn set_driver_user_id(&mut self, user_id: u64) -> Result<(), DataUploadError> {
         let cell = Records::cell_range(self.rownum, Records::DRIVER_USER_ID_COLUMN);
         let value = Value::String(user_id.to_string());
         self.gsheet.write_cell(cell, value).await?;
@@ -62,7 +86,7 @@ impl Record<'_> {
         Ok(())
     }
 
-    pub async fn set_track_name(&mut self, track_name: String) -> Result<()> {
+    pub async fn set_track_name(&mut self, track_name: String) -> Result<(), DataUploadError> {
         let cell = Records::cell_range(self.rownum, Records::TRACK_NAME_COLUMN);
         let value = Value::String(track_name.clone());
         self.gsheet.write_cell(cell, value).await?;
@@ -70,7 +94,7 @@ impl Record<'_> {
         Ok(())
     }
 
-    pub async fn set_race_duration(&mut self, race_duration: Duration) -> Result<()> {
+    pub async fn set_race_duration(&mut self, race_duration: Duration) -> Result<(), DataUploadError> {
         let cell = Records::cell_range(self.rownum, Records::RACE_DURATION_COLUMN);
         let value = duration_to_value(race_duration).unwrap(); // TODO: handle this unwrap properly
         self.gsheet.write_cell(cell, value).await?;

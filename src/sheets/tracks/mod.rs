@@ -1,5 +1,4 @@
-use crate::sheets::gsheet::GSheet;
-use anyhow::Result;
+use crate::sheets::{errors::DataFetchError, gsheet::GSheet};
 mod track;
 use super::utils::DataRanges;
 use track::Track;
@@ -25,7 +24,7 @@ impl Tracks<'_> {
     pub const NAME_COLUMN: &'static str = "A";
     pub const ICON_FILE_URL_COLUMN: &'static str = "B";
 
-    pub async fn get_all(&self) -> Result<Vec<Track>> {
+    pub async fn get_all(&self) -> Result<Vec<Track>, DataFetchError> {
         let sheets = self
             .gsheet
             .sheets

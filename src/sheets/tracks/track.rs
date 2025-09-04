@@ -1,7 +1,6 @@
-use anyhow::{Result, anyhow};
 use serde_json::Value;
 
-use crate::sheets::gsheet::GSheet;
+use crate::sheets::{errors::DeserializeValueError, gsheet::GSheet};
 
 #[derive(Debug)]
 pub struct Track<'a> {
@@ -12,22 +11,40 @@ pub struct Track<'a> {
 }
 
 impl<'a> Track<'a> {
-    pub fn from_row(rownum: usize, values: Vec<Value>, gsheet: &'a GSheet) -> Result<Self> {
-        let name = match values.get(0).ok_or(anyhow!("Failed to get name value"))? {
+    pub fn from_row(
+        rownum: usize,
+        values: Vec<Value>,
+        gsheet: &'a GSheet,
+    ) -> Result<Self, DeserializeValueError> {
+        let name = match values.get(0).ok_or(DeserializeValueError::MissingItem {
+            missing_index: 0,
+            expected_item_count: 2,
+        })? {
             Value::String(name) => name,
-            _ => {
-                return Err(anyhow!("Failed to represent track as a String"));
+            val => {
+                return Err(DeserializeValueError::UnexpectedValueType {
+                    input_value: val.clone(),
+                    allowed_inputs: "String",
+                    intended_output: "String",
+                });
             }
         }
         .to_owned();
 
         let icon_url = match values
             .get(1)
-            .ok_or(anyhow!("Failed to get icon url value"))?
+            .ok_or(DeserializeValueError::MissingItem {
+            missing_index: 1,
+            expected_item_count: 2,
+        })?
         {
             Value::String(icon_url) => icon_url,
-            _ => {
-                return Err(anyhow!("Failed to represent icon url as a String"));
+            val => {
+                return Err(DeserializeValueError::UnexpectedValueType {
+                    input_value: val.clone(),
+                    allowed_inputs: "String",
+                    intended_output: "String",
+                });
             }
         }
         .to_owned();
