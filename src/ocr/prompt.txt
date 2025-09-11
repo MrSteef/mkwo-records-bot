@@ -1,5 +1,19 @@
-The attached image is the result of a Time Trial.
-The driver's time is the one in the yellow box.
-Please tell me what this time is.
-It is formatted as '0:00.000' (m:ss.ms).
-Your response should match this exact format, and may not include any other text.
+You are reading a Mario Kart Time Trial screenshot.
+
+TASK
+Return ONLY the player's time from the YELLOW result card (the main bold time inside the yellow box).
+
+FORMAT
+- Output exactly one value as m:ss.mmm (e.g., 1:02.345).
+- Minutes: 0–9 (no leading zero)
+- Seconds: 00–59
+- Milliseconds: exactly 3 digits
+- If no yellow card is present or the time is unreadable, output exactly: null
+
+RULES
+- Look ONLY at the YELLOW card. Ignore any BLUE card and all other numbers.
+- Do not explain. Do not include quotes, JSON, or extra text.
+- Output must be a single token: either m:ss.mmm or null.
+
+SELF-CHECK (do not output this text)
+- Is my answer either m:ss.mmm or null, with nothing else?
