@@ -24,7 +24,7 @@ impl Tracks<'_> {
     pub const NAME_COLUMN: &'static str = "A";
     pub const ICON_FILE_URL_COLUMN: &'static str = "B";
 
-    pub async fn get_all(&self) -> Result<Vec<Track>, DataFetchError> {
+    pub async fn get_all(&self) -> Result<Vec<Track<'_>>, DataFetchError> {
         let sheets = self
             .gsheet
             .sheets

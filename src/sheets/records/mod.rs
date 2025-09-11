@@ -53,7 +53,7 @@ impl<'a> Records<'a> {
         Ok(records)
     }
 
-    pub async fn get_by_bot_message_id(&self, bot_message_id: u64) -> Result<Option<Record>, DataFetchError> {
+    pub async fn get_by_bot_message_id(&self, bot_message_id: u64) -> Result<Option<Record<'_>>, DataFetchError> {
         let player_list = self.get_all().await?;
         let player = player_list
             .into_iter()

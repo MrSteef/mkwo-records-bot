@@ -27,7 +27,7 @@ impl Players<'_> {
     pub const DISPLAY_NAME_COLUMN: &'static str = "B";
     pub const CURRENT_TRACK_COLUMN: &'static str = "C";
 
-    pub async fn get_all(&self) -> Result<Vec<Player>, DataFetchError> {
+    pub async fn get_all(&self) -> Result<Vec<Player<'_>>, DataFetchError> {
         let sheets = self.gsheet.sheets.lock().await;
         let document_id = &self.gsheet.document_id;
         let table_range = &Players::table_range();
@@ -49,7 +49,7 @@ impl Players<'_> {
         Ok(players)
     }
 
-    pub async fn get_by_user_id(&self, user_id: u64) -> Result<Option<Player>, DataFetchError> {
+    pub async fn get_by_user_id(&self, user_id: u64) -> Result<Option<Player<'_>>, DataFetchError> {
         let player_list = self.get_all().await?;
         let player = player_list
             .into_iter()
@@ -57,7 +57,7 @@ impl Players<'_> {
         Ok(player)
     }
 
-    pub async fn create(&self, user_id: u64, display_name: impl Into<String>, track_name: Option<String>) -> Result<Player, DataUploadError> {
+    pub async fn create(&self, user_id: u64, display_name: impl Into<String>, track_name: Option<String>) -> Result<Player<'_>, DataUploadError> {
         if let Some(_) = self.get_by_user_id(user_id).await? {
             return Err(DataUploadError::UniqueConstraint);
         }
