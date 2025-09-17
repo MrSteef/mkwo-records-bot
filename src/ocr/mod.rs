@@ -452,7 +452,7 @@ fn encode_png(img: &DynamicImage) -> Result<Vec<u8>> {
     let (w, h) = img.dimensions();
 
     let mut buf = Vec::new();
-    let mut enc = PngEncoder::new_with_quality(&mut buf, PngCompression::Best, PngFilter::Adaptive);
+    let enc = PngEncoder::new_with_quality(&mut buf, PngCompression::Best, PngFilter::Adaptive);
 
     if has_alpha {
         let rgba = img.to_rgba8();
