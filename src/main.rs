@@ -6,7 +6,7 @@ use serenity::{all::GatewayIntents, Client};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    dotenv()?;
+    dotenv().ok();
     let gsheet = GSheet::try_new().await?;
 
     let token = env::var("DISCORD_TOKEN").expect("Expected DISCORD_TOKEN in env");
